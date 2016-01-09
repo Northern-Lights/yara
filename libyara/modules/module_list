@@ -16,3 +16,5 @@ MODULE(hash)
 #endif
 
 MODULE(demo)
+
+MODULE(macho)

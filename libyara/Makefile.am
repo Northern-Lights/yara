@@ -18,6 +18,8 @@ endif
 
 MODULES += modules/demo.c
 
+MODULES += modules/macho.c
+
 #
 # Add your modules here:
 #
