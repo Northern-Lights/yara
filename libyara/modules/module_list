@@ -15,6 +15,4 @@ MODULE(magic)
 MODULE(hash)
 #endif
 
-MODULE(demo)
-
 MODULE(macho)
