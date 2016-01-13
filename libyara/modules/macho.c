@@ -323,81 +323,81 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	//EDIT: No good - documentation says (char *), but compiler says (SIZED_STRING *)
 	//Check if there is a duplicate segment name for this executable
 //	char *already_exists = get_string(module_object,
-//									  "mach_header.LC_SEGMENT[%s].cmd", seg->segname);
+//									  "mach_header.seg[%s].cmd", seg->segname);
 //	if (!strcmp(already_exists, seg->segname)) { return false; }
 
 	//TODO: We should have a check here that there is no duplicate segment name
 	set_integer(seg->cmd, module_object,
-				"mach_header.LC_SEGMENT[%s].cmd", seg->segname);
+				"mach_header.seg[%s].cmd", seg->segname);
 	set_integer(seg->cmdsize, module_object,
-				"mach_header.LC_SEGMENT[%s].cmdsize", seg->segname);
+				"mach_header.seg[%s].cmdsize", seg->segname);
 	set_string(seg->segname, module_object,
-			   "mach_header.LC_SEGMENT[%s].segname", seg->segname);
+			   "mach_header.seg[%s].segname", seg->segname);
 	set_integer(seg->vmaddr, module_object,
-				"mach_header.LC_SEGMENT[%s].vmaddr", seg->segname);
+				"mach_header.seg[%s].vmaddr", seg->segname);
 	set_integer(seg->fileoff, module_object,
-				"mach_header.LC_SEGMENT[%s].fileoff", seg->segname);
+				"mach_header.seg[%s].fileoff", seg->segname);
 	set_integer(seg->filesize, module_object,
-				"mach_header.LC_SEGMENT[%s].filesize", seg->segname);
+				"mach_header.seg[%s].filesize", seg->segname);
 	set_integer(seg->maxprot, module_object,
-				"mach_header.LC_SEGMENT[%s].maxprot", seg->segname);
+				"mach_header.seg[%s].maxprot", seg->segname);
 	set_integer(seg->initprot, module_object,
-				"mach_header.LC_SEGMENT[%s].initprot", seg->segname);
+				"mach_header.seg[%s].initprot", seg->segname);
 	set_integer(seg->nsects, module_object,
-				"mach_header.LC_SEGMENT[%s].nsects", seg->segname);
+				"mach_header.seg[%s].nsects", seg->segname);
 	set_integer(seg->flags, module_object,
-				"mach_header.LC_SEGMENT[%s].flags", seg->segname);
+				"mach_header.seg[%s].flags", seg->segname);
 
 	//Get the sections
 	PSECTION section = (PSECTION) (seg + 1);
 	for (int i = 0; i < seg->nsects; i++) {
 		set_string(section->sectname, module_object,
-				   "mach_header.LC_SEGMENT[%s].section[%s].sectname",
+				   "mach_header.seg[%s].sec[%s].sectname",
 				   seg->segname,
 				   section->sectname);
 		set_string(section->segname, module_object,
-				   "mach_header.LC_SEGMENT[%s].section[%s].segname",
+				   "mach_header.seg[%s].sec[%s].segname",
 				   seg->segname,
 				   section->sectname);
 		set_integer(section->addr, module_object,
-				   "mach_header.LC_SEGMENT[%s].section[%s].addr",
+				   "mach_header.seg[%s].sec[%s].addr",
 				   seg->segname,
 				   section->sectname);
 		set_integer(section->size, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].size",
+					"mach_header.seg[%s].sec[%s].size",
 					seg->segname,
 					section->sectname);
 		set_integer(section->offset, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].offset",
+					"mach_header.seg[%s].sec[%s].offset",
 					seg->segname,
 					section->sectname);
 		set_integer(section->align, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].align",
+					"mach_header.seg[%s].sec[%s].align",
 					seg->segname,
 					section->sectname);
 		set_integer(section->reloff, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].reloff",
+					"mach_header.seg[%s].sec[%s].reloff",
 					seg->segname,
 					section->sectname);
 		set_integer(section->nreloc, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].nreloc",
+					"mach_header.seg[%s].sec[%s].nreloc",
 					seg->segname,
 					section->sectname);
 		set_integer(section->flags, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].flags",
+					"mach_header.seg[%s].sec[%s].flags",
 					seg->segname,
 					section->sectname);
 		set_integer(section->reserved1, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].reserved1",
+					"mach_header.seg[%s].sec[%s].reserved1",
 					seg->segname,
 					section->sectname);
 		set_integer(section->reserved2, module_object,
-					"mach_header.LC_SEGMENT[%s].section[%s].reserved2",
+					"mach_header.seg[%s].sec[%s].reserved2",
 					seg->segname,
 					section->sectname);
 //		if (is_64_bit) {
 //			set_integer(section->reserved3, module_object,
-//						"mach_header.LC_SEGMENT[%s].section[%s].reserved3",
+//						"mach_header.seg[%s].sec[%s].reserved3",
 //						seg->segname,
 //						section->sectname);
 //		}
@@ -618,7 +618,7 @@ begin_struct("mach_header");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
 	end_struct_array("load_command");
-	begin_struct_dictionary("LC_SEGMENT");
+	begin_struct_dictionary("seg");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
 		declare_string("segname");
@@ -631,7 +631,7 @@ begin_struct("mach_header");
 		declare_integer("nsects");
 		declare_integer("flags");
 		//Can we use both string and int keys? It would be nice to be able to use as an array, too.
-		begin_struct_dictionary("section");
+		begin_struct_dictionary("sec");
 			declare_string("sectname");
 			declare_string("segname");
 			declare_integer("addr");
@@ -643,8 +643,8 @@ begin_struct("mach_header");
 			declare_integer("flags");
 			declare_integer("reserved1");
 			declare_integer("reserved2");
-		end_struct_dictionary("section");
-	end_struct_dictionary("LC_SEGMENT");
+		end_struct_dictionary("sec");
+	end_struct_dictionary("seg");
 	begin_struct_dictionary("LC_LOAD_DYLIB");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
