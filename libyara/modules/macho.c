@@ -245,42 +245,57 @@ bool get_fat_header(uint64_t offset) {
 }
 
 bool get_mach_header(uint64_t offset) {
-	uint32_t magic = *((uint32_t *) (block + offset));
-	if (magic != MH_MAGIC && magic != MH_MAGIC_64) {
+
+	mach_header = (PMACH_HEADER) (block + offset);
+	char *mh_name;
+
+	switch (mach_header->magic) {
+	case MH_MAGIC:
+		set_integer(true, module_object, "is_macho");
+		mh_name = "mach_header";
+		break;
+	case MH_MAGIC_64:
+		set_integer(true, module_object, "is_macho_64");
+		mh_name = "mach_header_64";
+		mach_header_64 = (PMACH_HEADER_64) mach_header;
+		break;
+	default:
 		return false;
 	}
 
-	set_integer(true, module_object, "is_macho");
-
-	mach_header = (PMACH_HEADER) (block + offset);
-	if (magic == MH_CIGAM) {
-		//TODO: We probably need to swap everything
+	//Use the same mach_header for both 32- and 64-bit since the sizes are the
+	//same, except mach_header_64 structs have a "reserved" field at the end.
+	char identifier[256];
+	snprintf(identifier, sizeof(identifier), "%s.magic", mh_name);
+	set_integer(mach_header->magic, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.cputype", mh_name);
+	set_integer(mach_header->cputype, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.cpusubtype", mh_name);
+	set_integer(mach_header->cpusubtype, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.filetype", mh_name);
+	set_integer(mach_header->filetype, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.ncmds", mh_name);
+	set_integer(mach_header->ncmds, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.sizeofcmds", mh_name);
+	set_integer(mach_header->sizeofcmds, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.flags", mh_name);
+	set_integer(mach_header->flags, module_object, identifier);
+	if (mach_header->magic == MH_MAGIC_64) {
+		snprintf(identifier, sizeof(identifier), "%s.reserved", mh_name);
+		set_integer(mach_header_64->reserved, module_object, identifier);
 	}
 
-	set_integer(mach_header->magic, module_object, "mach_header.magic");
-	set_integer(mach_header->cputype, module_object, "mach_header.cputype");
-	set_integer(mach_header->cpusubtype, module_object, "mach_header.cpusubtype");
-	set_integer(mach_header->filetype, module_object, "mach_header.filetype");
-	set_integer(mach_header->ncmds, module_object, "mach_header.ncmds");
-	set_integer(mach_header->sizeofcmds, module_object, "mach_header.sizeofcmds");
-	set_integer(mach_header->flags, module_object, "mach_header.flags");
-
-	//TODO: we should probably do all the load commands and
-	//seg/sections here since there will be the same items
-	//for multiple architectures; we don't want those
-	//structs to be global.
-	//Make them mach_header.cmd[i], or something...
 	PLOAD_COMMAND pLoad_command = (PLOAD_COMMAND) (mach_header + 1);
 	for (int i = 0; i < mach_header->ncmds; i++) {
 
 		//Fill in specific load commands
 		switch (pLoad_command->cmd) {
-			case LC_SEGMENT:
-				fill_segment_dict(pLoad_command); break;
-			case LC_LOAD_DYLIB:
-				fill_load_dylib_dict(pLoad_command); break;
-			default:
-				break;
+		case LC_SEGMENT:
+			fill_segment_dict(pLoad_command); break;
+		case LC_LOAD_DYLIB:
+			fill_load_dylib_dict(pLoad_command); break;
+		default:
+			break;
 		}
 
 		//Fill the general load command array
