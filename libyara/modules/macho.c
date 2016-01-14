@@ -229,15 +229,20 @@ bool get_fat_header(uint64_t offset) {
 
 	//Get the mach_headers
 	for (int i = 0; i < fat_header->nfat_arch; i++) {
+		bool result;
 		//TODO: Identifier name collisions? It's inside a for{} block...
 		uint64_t offset = get_integer(module_object, "fat_arch[%i].offset", i);
 		uint32_t magic = *((uint32_t *) (block + offset));
 
-		if (magic == MH_MAGIC || magic == MH_CIGAM) {
-			get_mach_header(offset);
-		}
-		else if (magic == MH_MAGIC_64 || magic == MH_CIGAM_64) {
-			get_mach_header_64(offset);
+		if (magic == MH_MAGIC || magic == MH_CIGAM ||
+				magic == MH_MAGIC_64 || magic == MH_CIGAM_64)
+		{
+			result = get_mach_header(offset);
+
+			//If we get a malformed mach header, return false.
+			if (result == false) {
+				return result;
+			}
 		}
 	}
 
@@ -290,6 +295,7 @@ bool get_mach_header(uint64_t offset) {
 
 		//Fill in specific load commands
 		switch (pLoad_command->cmd) {
+		case LC_SEGMENT_64:
 		case LC_SEGMENT:
 			fill_segment_dict(pLoad_command); break;
 		case LC_LOAD_DYLIB:
@@ -318,90 +324,103 @@ bool get_mach_header_64(uint64_t offset) {
 
 bool fill_segment_dict(PLOAD_COMMAND p) {
 	PSEGMENT_COMMAND seg = (PSEGMENT_COMMAND) p;
+	char *mh_name;
 
-	//TODO: Can we use an int?  What will an int return if it doesn't exist?
-	//EDIT: No good - documentation says (char *), but compiler says (SIZED_STRING *)
-	//Check if there is a duplicate segment name for this executable
-//	char *already_exists = get_string(module_object,
-//									  "mach_header.seg[%s].cmd", seg->segname);
-//	if (!strcmp(already_exists, seg->segname)) { return false; }
+	switch (seg->cmd) {
+	case LC_SEGMENT_64:
+		mh_name = "mach_header_64";
+		break;
+	case LC_SEGMENT:
+		mh_name = "mach_header";
+		break;
+	default:
+		return false;
+	}
 
 	//TODO: We should have a check here that there is no duplicate segment name
-	set_integer(seg->cmd, module_object,
-				"mach_header.seg[%s].cmd", seg->segname);
-	set_integer(seg->cmdsize, module_object,
-				"mach_header.seg[%s].cmdsize", seg->segname);
-	set_string(seg->segname, module_object,
-			   "mach_header.seg[%s].segname", seg->segname);
-	set_integer(seg->vmaddr, module_object,
-				"mach_header.seg[%s].vmaddr", seg->segname);
-	set_integer(seg->fileoff, module_object,
-				"mach_header.seg[%s].fileoff", seg->segname);
-	set_integer(seg->filesize, module_object,
-				"mach_header.seg[%s].filesize", seg->segname);
-	set_integer(seg->maxprot, module_object,
-				"mach_header.seg[%s].maxprot", seg->segname);
-	set_integer(seg->initprot, module_object,
-				"mach_header.seg[%s].initprot", seg->segname);
-	set_integer(seg->nsects, module_object,
-				"mach_header.seg[%s].nsects", seg->segname);
-	set_integer(seg->flags, module_object,
-				"mach_header.seg[%s].flags", seg->segname);
+	char identifier[256];
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].cmd",
+		mh_name, seg->segname);
+	set_integer(seg->cmd, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].cmdsize",
+		mh_name, seg->segname);
+	set_integer(seg->cmdsize, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].segname",
+		mh_name, seg->segname);
+	set_string(seg->segname, module_object,identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].vmaddr",
+		mh_name, seg->segname);
+	set_integer(seg->vmaddr, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].fileoff",
+		mh_name, seg->segname);
+	set_integer(seg->fileoff, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].filesize",
+		mh_name, seg->segname);
+	set_integer(seg->filesize, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].maxprot",
+		mh_name, seg->segname);
+	set_integer(seg->maxprot, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].initprot",
+		mh_name, seg->segname);
+	set_integer(seg->initprot, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].nsects",
+		mh_name, seg->segname);
+	set_integer(seg->nsects, module_object, identifier);
+	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].flags",
+		mh_name, seg->segname);
+	set_integer(seg->flags, module_object, identifier);
 
 	//Get the sections
 	PSECTION section = (PSECTION) (seg + 1);
 	for (int i = 0; i < seg->nsects; i++) {
-		set_string(section->sectname, module_object,
-				   "mach_header.seg[%s].sec[%s].sectname",
-				   seg->segname,
-				   section->sectname);
-		set_string(section->segname, module_object,
-				   "mach_header.seg[%s].sec[%s].segname",
-				   seg->segname,
-				   section->sectname);
-		set_integer(section->addr, module_object,
-				   "mach_header.seg[%s].sec[%s].addr",
-				   seg->segname,
-				   section->sectname);
-		set_integer(section->size, module_object,
-					"mach_header.seg[%s].sec[%s].size",
-					seg->segname,
-					section->sectname);
-		set_integer(section->offset, module_object,
-					"mach_header.seg[%s].sec[%s].offset",
-					seg->segname,
-					section->sectname);
-		set_integer(section->align, module_object,
-					"mach_header.seg[%s].sec[%s].align",
-					seg->segname,
-					section->sectname);
-		set_integer(section->reloff, module_object,
-					"mach_header.seg[%s].sec[%s].reloff",
-					seg->segname,
-					section->sectname);
-		set_integer(section->nreloc, module_object,
-					"mach_header.seg[%s].sec[%s].nreloc",
-					seg->segname,
-					section->sectname);
-		set_integer(section->flags, module_object,
-					"mach_header.seg[%s].sec[%s].flags",
-					seg->segname,
-					section->sectname);
-		set_integer(section->reserved1, module_object,
-					"mach_header.seg[%s].sec[%s].reserved1",
-					seg->segname,
-					section->sectname);
-		set_integer(section->reserved2, module_object,
-					"mach_header.seg[%s].sec[%s].reserved2",
-					seg->segname,
-					section->sectname);
-//		if (is_64_bit) {
-//			set_integer(section->reserved3, module_object,
-//						"mach_header.seg[%s].sec[%s].reserved3",
-//						seg->segname,
-//						section->sectname);
-//		}
-		section++;
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].sectname",
+			mh_name, seg->segname, section->sectname);
+		set_string(section->sectname, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].segname",
+			mh_name, seg->segname, section->sectname);
+		set_string(section->segname, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].addr",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->addr, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].size",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->size, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].offset",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->offset, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].align",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->align, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reloff",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->reloff, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].nreloc",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->nreloc, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].flags",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->flags, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved1",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->reserved1, module_object, identifier);
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved2",
+			mh_name, seg->segname, section->sectname);
+		set_integer(section->reserved2, module_object, identifier);
+
+		//Set the extra field in the 64-bit section, and also increment section struct
+		if (seg->cmd == LC_SEGMENT_64) {
+			PSECTION_64 section_64 = (PSECTION_64) section;
+
+			snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved3",
+				mh_name, seg->segname, section_64->sectname);
+			set_integer(section_64->reserved3, module_object, identifier);
+
+			//Increment to the next section - compensate for the extra field
+			section_64++;
+			section = (PSECTION) section_64;
+		} else {
+			section++;	//Otherwise, increment, but no need to compensate.
+		}
 	}
 
 	return true;
