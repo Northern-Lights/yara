@@ -207,6 +207,12 @@ typedef struct segment_command_64 {
 	uint32_t	flags;
 } SEGMENT_COMMAND_64, *PSEGMENT_COMMAND_64;
 
+typedef union segment {
+	uint32_t						cmd;
+	SEGMENT_COMMAND			_32;
+	SEGMENT_COMMAND_64	_64;
+} SEGMENT, *PSEGMENT;
+
 //flags constants for segment_commands
 #define SG_HIGHVM				0x1
 #define SG_FVMLIB				0x2
