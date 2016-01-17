@@ -773,6 +773,7 @@ begin_struct("mach_header_64");
 			declare_integer("flags");
 			declare_integer("reserved1");
 			declare_integer("reserved2");
+			declare_integer("reserved3");
 		end_struct_dictionary("sec");
 	end_struct_dictionary("seg");
 	begin_struct_dictionary("LC_LOAD_DYLIB");
