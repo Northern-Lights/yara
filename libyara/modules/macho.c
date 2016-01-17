@@ -253,6 +253,7 @@ bool get_mach_header(uint64_t offset) {
 
 	mach_header = (PMACH_HEADER) (block + offset);
 	char *mh_name;
+	PLOAD_COMMAND pLoad_command;
 
 	switch (mach_header->magic) {
 	case MH_MAGIC:
@@ -285,14 +286,19 @@ bool get_mach_header(uint64_t offset) {
 	set_integer(mach_header->sizeofcmds, module_object, identifier);
 	snprintf(identifier, sizeof(identifier), "%s.flags", mh_name);
 	set_integer(mach_header->flags, module_object, identifier);
+
+	//Compensate for 64-bit: extra field + advance its header size.
 	if (mach_header->magic == MH_MAGIC_64) {
 		snprintf(identifier, sizeof(identifier), "%s.reserved", mh_name);
 		set_integer(mach_header_64->reserved, module_object, identifier);
+
+		pLoad_command = (PLOAD_COMMAND) (mach_header_64 + 1);
+	} else {
+		pLoad_command = (PLOAD_COMMAND) (mach_header + 1);
 	}
 
-	PLOAD_COMMAND pLoad_command = (PLOAD_COMMAND) (mach_header + 1);
 	for (int i = 0; i < mach_header->ncmds; i++) {
-
+printf("Command %d\n", pLoad_command->cmd);
 		//Fill in specific load commands
 		switch (pLoad_command->cmd) {
 		case LC_SEGMENT_64:
@@ -336,6 +342,9 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	default:
 		return false;
 	}
+////////////////////////This doesn't work because segment_command_64 has uint64_t-sized fields...
+////////////////////////Just because it has the same number of fields doesn't make the structs the same size.
+	printf("Found segment %s\n", seg->segname);
 
 	//TODO: We should have a check here that there is no duplicate segment name
 	char identifier[256];
@@ -373,53 +382,79 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	//Get the sections
 	PSECTION section = (PSECTION) (seg + 1);
 	for (int i = 0; i < seg->nsects; i++) {
+		printf("\tFound section %s\n", section->sectname);
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].sectname",
-			mh_name, seg->segname, section->sectname);
-		set_string(section->sectname, module_object, identifier);
+			mh_name, seg->segname, section->_32.sectname);
+		set_string(section->_32.sectname, module_object, identifier);
+
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].segname",
-			mh_name, seg->segname, section->sectname);
-		set_string(section->segname, module_object, identifier);
+			mh_name, seg->segname, section->_32.sectname);
+		set_string(section->_32.segname, module_object, identifier);
+
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].addr",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->addr, module_object, identifier);
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.addr : section->_32.addr,
+			module_object, identifier);
+
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].size",
 			mh_name, seg->segname, section->sectname);
-		set_integer(section->size, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].offset",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->offset, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].align",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->align, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reloff",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->reloff, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].nreloc",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->nreloc, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].flags",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->flags, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved1",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->reserved1, module_object, identifier);
-		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved2",
-			mh_name, seg->segname, section->sectname);
-		set_integer(section->reserved2, module_object, identifier);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.size : section->_32.size,
+			module_object, identifier);
 
-		//Set the extra field in the 64-bit section, and also increment section struct
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].offset",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.offset : section->_32.offset,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].align",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.align : section->_32.align,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reloff",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.reloff : section->_32.reloff,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].nreloc",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.nreloc : section->_32.nreloc,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].flags",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.flags : section->_32.flags,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved1",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.reserved1 : section->_32.reserved1,
+			module_object, identifier);
+
+		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved2",
+			mh_name, seg->segname, section->_32.sectname);
+		set_integer(seg->cmd == LC_SEGMENT_64 ?
+			section->_64.reserved2 : section->_32.reserved2,
+			module_object, identifier);
+
+		// //Set the extra field in the 64-bit section, and also increment section struct
 		if (seg->cmd == LC_SEGMENT_64) {
-			PSECTION_64 section_64 = (PSECTION_64) section;
 
 			snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved3",
-				mh_name, seg->segname, section_64->sectname);
-			set_integer(section_64->reserved3, module_object, identifier);
-
-			//Increment to the next section - compensate for the extra field
-			section_64++;
-			section = (PSECTION) section_64;
+				mh_name, seg->segname, section->_64.sectname);
+			set_integer(section->_64.reserved3, module_object, identifier);
+			section++;
 		} else {
-			section++;	//Otherwise, increment, but no need to compensate.
+			//Otherwise, just increment
+			section = (PSECTION) (((void *) section) + sizeof(section->_32));
 		}
 	}
 
@@ -649,7 +684,6 @@ begin_struct("mach_header");
 		declare_integer("initprot");
 		declare_integer("nsects");
 		declare_integer("flags");
-		//Can we use both string and int keys? It would be nice to be able to use as an array, too.
 		begin_struct_dictionary("sec");
 			declare_string("sectname");
 			declare_string("segname");
@@ -686,69 +720,47 @@ begin_struct("mach_header_64");
 	declare_integer("sizeofcmds");
 	declare_integer("flags");
 	declare_integer("reserved");
+	begin_struct_array("load_command");
+		declare_integer("cmd");
+		declare_integer("cmdsize");
+	end_struct_array("load_command");
+	begin_struct_dictionary("seg");
+		declare_integer("cmd");
+		declare_integer("cmdsize");
+		declare_string("segname");
+		declare_integer("vmaddr");
+		declare_integer("vmsize");
+		declare_integer("fileoff");
+		declare_integer("filesize");
+		declare_integer("maxprot");
+		declare_integer("initprot");
+		declare_integer("nsects");
+		declare_integer("flags");
+		begin_struct_dictionary("sec");
+			declare_string("sectname");
+			declare_string("segname");
+			declare_integer("addr");
+			declare_integer("size");
+			declare_integer("offset");
+			declare_integer("align");
+			declare_integer("reloff");
+			declare_integer("nreloc");
+			declare_integer("flags");
+			declare_integer("reserved1");
+			declare_integer("reserved2");
+		end_struct_dictionary("sec");
+	end_struct_dictionary("seg");
+	begin_struct_dictionary("LC_LOAD_DYLIB");
+		declare_integer("cmd");
+		declare_integer("cmdsize");
+		begin_struct("dylib");				//TODO: just ditch the embedded struct?
+			declare_string("name");
+			declare_integer("timestamp");	//TODO: function to convert this to human-readable?
+			declare_integer("current_version");		//TODO: And this
+			declare_integer("compatibility_version");	//TODO: And this
+		end_struct("dylib");
+	end_struct_dictionary("LC_LOAD_DYLIB");
 end_struct("mach_header_64");
-
-//begin_struct("load_command");		//TODO: Struct array in macho headers/objects
-//	declare_integer("cmd");
-//	declare_integer("cmdsize");
-//end_struct("load_command");
-
-begin_struct("segment_command");	//TODO: Struct array? Maybe a dict to get by name? Put in macho_header?
-	declare_integer("cmd");
-	declare_integer("cmdsize");
-	declare_string("segname");
-	declare_integer("vmaddr");
-	declare_integer("vmsize");
-	declare_integer("fileoff");
-	declare_integer("filesize");
-	declare_integer("maxprot");
-	declare_integer("initprot");
-	declare_integer("nsects");
-	declare_integer("flags");
-end_struct("segment_command");
-
-begin_struct("segment_command_64");	//TODO: Struct array? Maybe a dict to get by name? Put in macho_header_64?
-	declare_integer("cmd");
-	declare_integer("cmdsize");
-	declare_string("segname");
-	declare_integer("vmaddr");
-	declare_integer("vmsize");
-	declare_integer("fileoff");
-	declare_integer("filesize");
-	declare_integer("maxprot");
-	declare_integer("initprot");
-	declare_integer("nsects");
-	declare_integer("flags");
-end_struct("segment_command_64");
-
-begin_struct("section");			//TODO: Put this in segment_command?
-	declare_string("sectname");
-	declare_string("segname");
-	declare_integer("addr");
-	declare_integer("size");
-	declare_integer("offset");
-	declare_integer("align");
-	declare_integer("reloff");
-	declare_integer("nreloc");
-	declare_integer("flags");
-	declare_integer("reserved1");
-	declare_integer("reserved2");
-end_struct("section");
-
-begin_struct("section_64");			//TODO: Put this in segment_command_64?
-	declare_string("sectname");
-	declare_string("segname");
-	declare_integer("addr");
-	declare_integer("size");
-	declare_integer("offset");
-	declare_integer("align");
-	declare_integer("reloff");
-	declare_integer("nreloc");
-	declare_integer("flags");
-	declare_integer("reserved1");
-	declare_integer("reserved2");
-	declare_integer("reserved3");
-end_struct("section_64");
 
 //begin_struct("fvmlib");
 //	declare_integer("name");	//TODO: Offset to the name; follows this struct.  Maybe just make the string part of this struct

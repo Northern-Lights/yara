@@ -14,7 +14,7 @@ uint32_t swap_endianness_32(uint32_t n) {
 	((uint8_t *) &swapped)[1] = ((uint8_t *) &n)[2];
 	((uint8_t *) &swapped)[0] = ((uint8_t *) &n)[3];
 	return swapped;
-	
+
 }
 
 /*
@@ -213,7 +213,7 @@ typedef struct segment_command_64 {
 #define SG_NORELOC				0x4
 #define SG_PROTECTED_VERSION_1	0x8
 
-typedef struct section {
+typedef struct _section {
 	char		sectname[16];
 	char		segname[16];
 	uint32_t	addr;
@@ -225,9 +225,9 @@ typedef struct section {
 	uint32_t	flags;
 	uint32_t	reserved1;
 	uint32_t	reserved2;
-} SECTION, *PSECTION;
+} _SECTION, *_PSECTION;
 
-typedef struct section_64 {
+typedef struct _section_64 {
 	char		sectname[16];
 	char		segname[16];
 	uint64_t	addr;
@@ -240,7 +240,13 @@ typedef struct section_64 {
 	uint32_t	reserved1;
 	uint32_t	reserved2;
 	uint32_t	reserved3;
-} SECTION_64, *PSECTION_64;
+} _SECTION_64, *_PSECTION_64;
+
+typedef union section {
+	char				sectname[16];
+	_SECTION		_32;
+	_SECTION_64	_64;
+} SECTION, *PSECTION;
 
 //flags constants for section type: mask and flags
 #define SECTION_TYPE							0x000000ff	//mask
