@@ -220,8 +220,8 @@ typedef union segment {
 #define SG_PROTECTED_VERSION_1	0x8
 
 typedef struct _section {
-	char		sectname[16];
-	char		segname[16];
+	char			sectname[16];
+	char			segname[16];
 	uint32_t	addr;
 	uint32_t	size;
 	uint32_t	offset;
@@ -234,8 +234,8 @@ typedef struct _section {
 } _SECTION, *_PSECTION;
 
 typedef struct _section_64 {
-	char		sectname[16];
-	char		segname[16];
+	char			sectname[16];
+	char			segname[16];
 	uint64_t	addr;
 	uint64_t	size;
 	uint32_t	offset;

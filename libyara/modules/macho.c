@@ -298,7 +298,6 @@ bool get_mach_header(uint64_t offset) {
 	}
 
 	for (int i = 0; i < mach_header->ncmds; i++) {
-printf("Command %d\n", pLoad_command->cmd);
 		//Fill in specific load commands
 		switch (pLoad_command->cmd) {
 		case LC_SEGMENT_64:
@@ -343,55 +342,57 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 		return false;
 	}
 
-	printf("Found segment %s\n", seg->_32.segname);
+	char segname[17];
+	segname[16] = '\0';
+	memcpy(segname, seg->_32.segname, 16);
 
 	//TODO: We should have a check here that there is no duplicate segment name
 	char identifier[256];
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].cmd",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].cmdsize",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->_32.cmdsize, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].segname",
-		mh_name, seg->_32.segname);
-	set_string(seg->_32.segname, module_object,identifier);
+		mh_name, segname);
+	set_string(segname, module_object,identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].vmaddr",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.vmaddr : seg->_32.vmaddr,
 		module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].fileoff",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.fileoff : seg->_32.fileoff, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].filesize",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.filesize : seg->_32.filesize, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].maxprot",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.maxprot : seg->_32.maxprot, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].initprot",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.initprot : seg->_32.initprot, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].nsects",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.nsects : seg->_32.nsects, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].flags",
-		mh_name, seg->_32.segname);
+		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.flags : seg->_32.flags, module_object, identifier);
 
@@ -405,82 +406,83 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 
 	uint32_t nsects = seg->cmd == LC_SEGMENT_64 ? seg->_64.nsects : seg->_32.nsects;
 	for (int i = 0; i < nsects; i++) {
-printf("\tFound section %s at %p\n",
-	seg->cmd == LC_SEGMENT_64 ? section->_64.sectname : section->_32.sectname,
-	section);
+
+		char sectname[17];
+		sectname[16] = '\0';
+		memcpy(sectname, section->sectname, 16);
+
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].sectname",
-			mh_name, seg->_32.segname, section->_32.sectname);
-		set_string(section->_32.sectname, module_object, identifier);
+			mh_name, segname, sectname);
+		set_string(sectname, module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].segname",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_string(section->_32.segname, module_object, identifier);
-printf("\t\t%s\n", identifier);
+
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].addr",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.addr : section->_32.addr,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].size",
-			mh_name, seg->_32.segname, section->sectname);
+			mh_name, segname, section->sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.size : section->_32.size,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].offset",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.offset : section->_32.offset,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].align",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.align : section->_32.align,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reloff",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.reloff : section->_32.reloff,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].nreloc",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.nreloc : section->_32.nreloc,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].flags",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.flags : section->_32.flags,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved1",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.reserved1 : section->_32.reserved1,
 			module_object, identifier);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved2",
-			mh_name, seg->_32.segname, section->_32.sectname);
+			mh_name, segname, sectname);
 		set_integer(seg->cmd == LC_SEGMENT_64 ?
 			section->_64.reserved2 : section->_32.reserved2,
 			module_object, identifier);
-printf("Old section ptr: %p; new section ptr: ", section);
+
 		// //Set the extra field in the 64-bit section, and also increment section struct
 		if (seg->cmd == LC_SEGMENT_64) {
 			snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].reserved3",
-				mh_name, seg->_32.segname, section->_64.sectname);
+				mh_name, segname, sectname);
 			set_integer(section->_64.reserved3, module_object, identifier);
 			section++;
 		} else {
 			//Otherwise, just increment
 			section = (PSECTION) (((void *) section) + sizeof(section->_32));
 		}
-printf("%p\n", section);
 	}
 
 	return true;
