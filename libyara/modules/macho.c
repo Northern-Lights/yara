@@ -333,9 +333,10 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 		return false;
 	}
 
-	char segname[17];
-	segname[16] = '\0';
-	memcpy(segname, seg->_32.segname, 16);
+	//Because the field is char[16], and some names are 16 chars w/o '\0'
+	char segname[NAME_SIZE + 1];
+	segname[NAME_SIZE] = '\0';
+	memcpy(segname, seg->_32.segname, NAME_SIZE);
 
 	//TODO: We should have a check here that there is no duplicate segment name
 	char identifier[256];
@@ -387,7 +388,7 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
 		seg->_64.flags : seg->_32.flags, module_object, identifier);
 
-	//Get the sections
+	//Get the sections. Account for size of 32- or 64-bit section.
 	PSECTION section;
 	if (seg->cmd == LC_SEGMENT_64) {
 		section = (PSECTION) (seg + 1);
@@ -395,12 +396,13 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 		section = (PSECTION) (((void *) seg) + sizeof(seg->_32));
 	}
 
-	uint32_t nsects = seg->cmd == LC_SEGMENT_64 ? seg->_64.nsects : seg->_32.nsects;
+	uint32_t nsects = (seg->cmd == LC_SEGMENT_64) ? seg->_64.nsects : seg->_32.nsects;
 	for (int i = 0; i < nsects; i++) {
 
-		char sectname[17];
-		sectname[16] = '\0';
-		memcpy(sectname, section->sectname, 16);
+		//Because the field is char[16], and some names are 16 chars w/o '\0'
+		char sectname[NAME_SIZE + 1];
+		sectname[NAME_SIZE] = '\0';
+		memcpy(sectname, section->sectname, NAME_SIZE);
 
 		snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].sec[\"%s\"].sectname",
 			mh_name, segname, sectname);
@@ -781,12 +783,6 @@ begin_struct("mh64");
 	end_struct_dictionary("dylib");
 end_struct("mh64");
 
-//begin_struct("fvmlib");
-//	declare_integer("name");	//TODO: Offset to the name; follows this struct.  Maybe just make the string part of this struct
-//	declare_integer("minor_version");
-//	declare_integer("header_addr");
-//end_struct("fvmlib");
-
 begin_struct("fvmlib_command");
 	declare_integer("cmd");
 	declare_integer("cmdsize");
@@ -852,8 +848,6 @@ int module_load(
 }
 
 int module_unload(YR_OBJECT* module_object) {
-	if(block) {
-		free(block);
-	}
+	if(block) { free(block); }
 	return ERROR_SUCCESS;
 }

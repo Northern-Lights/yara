@@ -168,21 +168,14 @@ typedef struct load_command {
 #define LC_LINKER_OPTION			0x2D
 #define LC_LINKER_OPTIMIZATION_HINT	0x2E
 
-//TODO: This thing points to a string in a dylib command
-//union lc_str {
-//	uint32_t        offset; /* offset to the string */
-//#ifndef __LP64__
-//	char            *ptr;   /* pointer to the string */
-//#endif
-//};
-
 //Doesn't work if larger; casting issue.
 typedef uint8_t lc_str;
+#define NAME_SIZE 16
 
 typedef struct segment_command {
 	uint32_t	cmd;
 	uint32_t	cmdsize;
-	char		segname[16];
+	char		segname[NAME_SIZE];
 	uint32_t	vmaddr;
 	uint32_t	vmsize;
 	uint32_t	fileoff;
@@ -196,7 +189,7 @@ typedef struct segment_command {
 typedef struct segment_command_64 {
 	uint32_t	cmd;
 	uint32_t	cmdsize;
-	char		segname[16];
+	char		segname[NAME_SIZE];
 	uint64_t	vmaddr;
 	uint64_t	vmsize;
 	uint64_t	fileoff;
@@ -220,8 +213,8 @@ typedef union segment {
 #define SG_PROTECTED_VERSION_1	0x8
 
 typedef struct _section {
-	char			sectname[16];
-	char			segname[16];
+	char			sectname[NAME_SIZE];
+	char			segname[NAME_SIZE];
 	uint32_t	addr;
 	uint32_t	size;
 	uint32_t	offset;
@@ -234,8 +227,8 @@ typedef struct _section {
 } _SECTION, *_PSECTION;
 
 typedef struct _section_64 {
-	char			sectname[16];
-	char			segname[16];
+	char			sectname[NAME_SIZE];
+	char			segname[NAME_SIZE];
 	uint64_t	addr;
 	uint64_t	size;
 	uint32_t	offset;
@@ -249,7 +242,7 @@ typedef struct _section_64 {
 } _SECTION_64, *_PSECTION_64;
 
 typedef union section {
-	char				sectname[16];
+	char				sectname[NAME_SIZE];
 	_SECTION		_32;
 	_SECTION_64	_64;
 } SECTION, *PSECTION;
