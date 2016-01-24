@@ -244,16 +244,19 @@ bool get_mach_header(uint64_t offset) {
 
 	mach_header = (PMACH_HEADER) (block + offset);
 	char *mh_name;
+	bool is_64_bit;
 	PLOAD_COMMAND pLoad_command;
 
 	switch (mach_header->magic) {
 	case MH_MAGIC:
 		set_integer(true, module_object, "is_macho");
 		mh_name = "mh";
+		is_64_bit = false;
 		break;
 	case MH_MAGIC_64:
 		set_integer(true, module_object, "is_macho_64");
 		mh_name = "mh64";
+		is_64_bit = true;
 		mach_header_64 = (PMACH_HEADER_64) mach_header;
 		break;
 	default:
@@ -295,7 +298,7 @@ bool get_mach_header(uint64_t offset) {
 		case LC_SEGMENT:
 			fill_segment_dict(pLoad_command); break;
 		case LC_LOAD_DYLIB:
-			fill_load_dylib_dict(pLoad_command); break;
+			fill_load_dylib_dict(pLoad_command, is_64_bit); break;
 		default:
 			break;
 		}
@@ -480,28 +483,49 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	return true;
 }
 
-bool fill_load_dylib_dict(PLOAD_COMMAND p) {
-	PDYLIB_COMMAND	dylib_cmd	= (PDYLIB_COMMAND) p;
-	PDYLIB			dylib		= &dylib_cmd->dylib;
+bool fill_load_dylib_dict(PLOAD_COMMAND p, bool is_64_bit) {
+
+	char *mh_name;
+	if (is_64_bit)
+		mh_name = "mh64";
+	else
+		mh_name = "mh";
+
+	PDYLIB_COMMAND dylib_cmd	= (PDYLIB_COMMAND) p;
+	PDYLIB dylib							= &dylib_cmd->dylib;
 
 	//Path to dylib is stored after the load command
 	char *path = (char *) dylib_cmd + dylib->name;
-	char *name = strrchr(path, (int) '/') + 1;
+	char *basename = strrchr(path, (int) '/') + 1;
 
 	//TODO: Also put the full path in the hash to check for collisions?
 	//Fill in the dylib_command and dylib structures.
-	set_integer(dylib_cmd->cmd, module_object,
-				"mh.dylib[%s].cmd", name);
-	set_integer(dylib_cmd->cmdsize, module_object,
-				"mh.dylib[%s].cmdsize", name);
-	set_string(name, module_object,
-				"mh.dylib[%s].name", name);
-	set_integer(dylib->timestamp, module_object,
-				"mh.dylib[%s].timestamp", name);
-	set_integer(dylib->current_version, module_object,
-				"mh.dylib[%s].current_version", name);
-	set_integer(dylib->compatibility_version, module_object,
-				"mh.dylib[%s].compatibility_version", name);
+	char identifier[256];
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].cmd",
+		mh_name, basename);
+	set_integer(dylib_cmd->cmd, module_object, identifier);
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].cmdsize",
+		mh_name, basename);
+	set_integer(dylib_cmd->cmdsize, module_object, identifier);
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].name",
+		mh_name, basename);
+	set_string(basename, module_object, identifier);
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].timestamp",
+		mh_name, basename);
+	set_integer(dylib->timestamp, module_object, identifier);
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].current_version",
+		mh_name, basename);
+	set_integer(dylib->current_version, module_object, identifier);
+
+	snprintf(identifier, sizeof(identifier), "%s.dylib[\"%s\"].compatibility_version",
+		mh_name, basename);
+	set_integer(dylib->compatibility_version, module_object, identifier);
+
 	return true;
 }
 

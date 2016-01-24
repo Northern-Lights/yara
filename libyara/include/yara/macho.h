@@ -359,4 +359,4 @@ bool get_mach_header_64(uint64_t offset);
 bool fill_segment_dict(PLOAD_COMMAND);
 bool fill_segment_64_dict(PLOAD_COMMAND);
 
-bool fill_load_dylib_dict(PLOAD_COMMAND);
+bool fill_load_dylib_dict(PLOAD_COMMAND, bool is_64_bit);
