@@ -7,15 +7,6 @@
 
 #define MODULE_NAME macho
 
-//#include <libkern/OSByteOrder.h>
-//#include <mach-o/loader.h>
-//#include <mach-o/fat.h>
-
-//typedef struct fat_header fat_header;
-//typedef struct fat_arch fat_arch;
-//typedef struct mach_header mach_header;
-//typedef struct mach_header_64 mach_header_64;
-
 //This is our scanned data. For the header, we (should) be interested only in the 1st block.
 //In the future, we may be interested in more if we want to get Obj-C class info, for example.
 uint8_t		*block = 0;
@@ -195,8 +186,8 @@ bool get_fat_header(uint64_t offset) {
 	if (magic == FAT_CIGAM) {
 		fat_header->nfat_arch = swap_endianness_32(fat_header->nfat_arch);
 	}
-	set_integer(magic, module_object, "fat_header.magic");
-	set_integer(fat_header->nfat_arch, module_object, "fat_header.nfat_arch");
+	set_integer(magic, module_object, "fh.magic");
+	set_integer(fat_header->nfat_arch, module_object, "fh.nfat_arch");
 
 	//Get the fat_arch structs
 	for (int i = 0; i < fat_header->nfat_arch; i++) {
@@ -258,11 +249,11 @@ bool get_mach_header(uint64_t offset) {
 	switch (mach_header->magic) {
 	case MH_MAGIC:
 		set_integer(true, module_object, "is_macho");
-		mh_name = "mach_header";
+		mh_name = "mh";
 		break;
 	case MH_MAGIC_64:
 		set_integer(true, module_object, "is_macho_64");
-		mh_name = "mach_header_64";
+		mh_name = "mh64";
 		mach_header_64 = (PMACH_HEADER_64) mach_header;
 		break;
 	default:
@@ -311,9 +302,9 @@ bool get_mach_header(uint64_t offset) {
 
 		//Fill the general load command array
 		set_integer(pLoad_command->cmd, module_object,
-					"mach_header.load_command[%i].cmd", i);
+					"mh.lc[%i].cmd", i);
 		set_integer(pLoad_command->cmdsize, module_object,
-					"mach_header.load_command[%i].cmdsize", i);
+					"mh.lc[%i].cmdsize", i);
 
 		uint8_t *pNext_load_command = (uint8_t *) pLoad_command;
 		pNext_load_command += pLoad_command->cmdsize;
@@ -333,10 +324,10 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 
 	switch (seg->cmd) {
 	case LC_SEGMENT_64:
-		mh_name = "mach_header_64";
+		mh_name = "mh64";
 		break;
 	case LC_SEGMENT:
-		mh_name = "mach_header";
+		mh_name = "mh";
 		break;
 	default:
 		return false;
@@ -499,17 +490,17 @@ bool fill_load_dylib_dict(PLOAD_COMMAND p) {
 	//TODO: Also put the full path in the hash to check for collisions?
 	//Fill in the dylib_command and dylib structures.
 	set_integer(dylib_cmd->cmd, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].cmd", name);
+				"mh.dylib[%s].cmd", name);
 	set_integer(dylib_cmd->cmdsize, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].cmdsize", name);
+				"mh.dylib[%s].cmdsize", name);
 	set_string(name, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].dylib.name", name);
+				"mh.dylib[%s].dylib.name", name);
 	set_integer(dylib->timestamp, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].dylib.timestamp", name);
+				"mh.dylib[%s].dylib.timestamp", name);
 	set_integer(dylib->current_version, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].dylib.current_version", name);
+				"mh.dylib[%s].dylib.current_version", name);
 	set_integer(dylib->compatibility_version, module_object,
-				"mach_header.LC_LOAD_DYLIB[%s].dylib.compatibility_version", name);
+				"mh.dylib[%s].dylib.compatibility_version", name);
 	return true;
 }
 
@@ -673,10 +664,10 @@ declare_string("SEG_IMPORT");
 //Structs for headers and info about the binary
 {
 declare_integer("is_fat");
-begin_struct("fat_header");
+begin_struct("fh");
 	declare_integer("magic");
 	declare_integer("nfat_arch");
-end_struct("fat_header");
+end_struct("fh");
 
 begin_struct_array("fat_arch");
 	declare_integer("cputype");
@@ -687,7 +678,7 @@ begin_struct_array("fat_arch");
 end_struct_array("fat_arch");
 
 declare_integer("is_macho");
-begin_struct("mach_header");
+begin_struct("mh");
 	declare_integer("magic");
 	declare_integer("cputype");
 	declare_integer("cpusubtype");
@@ -695,10 +686,10 @@ begin_struct("mach_header");
 	declare_integer("ncmds");
 	declare_integer("sizeofcmds");
 	declare_integer("flags");
-	begin_struct_array("load_command");
+	begin_struct_array("lc");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
-	end_struct_array("load_command");
+	end_struct_array("lc");
 	begin_struct_dictionary("seg");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
@@ -725,7 +716,7 @@ begin_struct("mach_header");
 			declare_integer("reserved2");
 		end_struct_dictionary("sec");
 	end_struct_dictionary("seg");
-	begin_struct_dictionary("LC_LOAD_DYLIB");
+	begin_struct_dictionary("dylib");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
 		begin_struct("dylib");				//TODO: just ditch the embedded struct?
@@ -734,11 +725,11 @@ begin_struct("mach_header");
 			declare_integer("current_version");		//TODO: And this
 			declare_integer("compatibility_version");	//TODO: And this
 		end_struct("dylib");
-	end_struct_dictionary("LC_LOAD_DYLIB");
-end_struct("mach_header");
+	end_struct_dictionary("dylib");
+end_struct("mh");
 
 declare_integer("is_macho_64");
-begin_struct("mach_header_64");
+begin_struct("mh64");
 	declare_integer("magic");
 	declare_integer("cputype");
 	declare_integer("cpusubtype");
@@ -747,10 +738,10 @@ begin_struct("mach_header_64");
 	declare_integer("sizeofcmds");
 	declare_integer("flags");
 	declare_integer("reserved");
-	begin_struct_array("load_command");
+	begin_struct_array("lc");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
-	end_struct_array("load_command");
+	end_struct_array("lc");
 	begin_struct_dictionary("seg");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
@@ -778,7 +769,7 @@ begin_struct("mach_header_64");
 			declare_integer("reserved3");
 		end_struct_dictionary("sec");
 	end_struct_dictionary("seg");
-	begin_struct_dictionary("LC_LOAD_DYLIB");
+	begin_struct_dictionary("dylib");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
 		begin_struct("dylib");				//TODO: just ditch the embedded struct?
@@ -787,8 +778,8 @@ begin_struct("mach_header_64");
 			declare_integer("current_version");		//TODO: And this
 			declare_integer("compatibility_version");	//TODO: And this
 		end_struct("dylib");
-	end_struct_dictionary("LC_LOAD_DYLIB");
-end_struct("mach_header_64");
+	end_struct_dictionary("dylib");
+end_struct("mh64");
 
 //begin_struct("fvmlib");
 //	declare_integer("name");	//TODO: Offset to the name; follows this struct.  Maybe just make the string part of this struct
@@ -805,17 +796,6 @@ begin_struct("fvmlib_command");
 		declare_integer("header_addr");
 	end_struct("fvmlib");
 end_struct("fvmlib_command");
-
-begin_struct("dylib_command");
-	declare_integer("cmd");
-	declare_integer("cmdsize");
-	begin_struct("dylib");
-		declare_integer("name");	//TODO: Offset to the name; follows this struct.  Maybe just make the string part of this struct
-		declare_integer("timestamp");
-		declare_integer("current_version");
-		declare_integer("compatibility_version");
-	end_struct("dylib");
-end_struct("dylib_command");
 }
 
 end_declarations;
