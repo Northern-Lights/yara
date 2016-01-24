@@ -350,13 +350,12 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].segname",
 		mh_name, segname);
-	set_string(segname, module_object,identifier);
+	set_string(segname, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].vmaddr",
 		mh_name, segname);
 	set_integer(seg->cmd == LC_SEGMENT_64 ?
-		seg->_64.vmaddr : seg->_32.vmaddr,
-		module_object, identifier);
+		seg->_64.vmaddr : seg->_32.vmaddr, module_object, identifier);
 
 	snprintf(identifier, sizeof(identifier), "%s.seg[\"%s\"].fileoff",
 		mh_name, segname);
