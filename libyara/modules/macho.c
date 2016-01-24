@@ -495,13 +495,13 @@ bool fill_load_dylib_dict(PLOAD_COMMAND p) {
 	set_integer(dylib_cmd->cmdsize, module_object,
 				"mh.dylib[%s].cmdsize", name);
 	set_string(name, module_object,
-				"mh.dylib[%s].dylib.name", name);
+				"mh.dylib[%s].name", name);
 	set_integer(dylib->timestamp, module_object,
-				"mh.dylib[%s].dylib.timestamp", name);
+				"mh.dylib[%s].timestamp", name);
 	set_integer(dylib->current_version, module_object,
-				"mh.dylib[%s].dylib.current_version", name);
+				"mh.dylib[%s].current_version", name);
 	set_integer(dylib->compatibility_version, module_object,
-				"mh.dylib[%s].dylib.compatibility_version", name);
+				"mh.dylib[%s].compatibility_version", name);
 	return true;
 }
 
@@ -720,12 +720,10 @@ begin_struct("mh");
 	begin_struct_dictionary("dylib");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
-		begin_struct("dylib");				//TODO: just ditch the embedded struct?
-			declare_string("name");
-			declare_integer("timestamp");	//TODO: function to convert this to human-readable?
-			declare_integer("current_version");		//TODO: And this
-			declare_integer("compatibility_version");	//TODO: And this
-		end_struct("dylib");
+		declare_string("name");
+		declare_integer("timestamp");	//TODO: function to convert this to human-readable?
+		declare_integer("current_version");		//TODO: And this
+		declare_integer("compatibility_version");	//TODO: And this
 	end_struct_dictionary("dylib");
 end_struct("mh");
 
@@ -773,12 +771,10 @@ begin_struct("mh64");
 	begin_struct_dictionary("dylib");
 		declare_integer("cmd");
 		declare_integer("cmdsize");
-		begin_struct("dylib");				//TODO: just ditch the embedded struct?
-			declare_string("name");
-			declare_integer("timestamp");	//TODO: function to convert this to human-readable?
-			declare_integer("current_version");		//TODO: And this
-			declare_integer("compatibility_version");	//TODO: And this
-		end_struct("dylib");
+		declare_string("name");
+		declare_integer("timestamp");	//TODO: function to convert this to human-readable?
+		declare_integer("current_version");		//TODO: And this
+		declare_integer("compatibility_version");	//TODO: And this
 	end_struct_dictionary("dylib");
 end_struct("mh64");
 
