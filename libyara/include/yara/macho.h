@@ -349,14 +349,12 @@ typedef struct dylib_command {
 
 //Set the constants so that we can access macho.FAT_MAGIC
 //to get 0xbebafeca, for example
-bool set_constants();
+static bool set_constants();
 
-bool get_fat_header(uint64_t offset);
-bool get_mach_header(uint64_t offset);
-bool get_mach_header_64(uint64_t offset);
+static bool get_fat_header(uint64_t offset);
+static bool get_mach_header(uint64_t offset);
 
 //Fill a mach header's segment dictionary
-bool fill_segment_dict(PLOAD_COMMAND);
-bool fill_segment_64_dict(PLOAD_COMMAND);
+static bool fill_segment_dict(PLOAD_COMMAND);
 
-bool fill_load_dylib_dict(PLOAD_COMMAND, bool is_64_bit);
+static bool fill_load_dylib_dict(PLOAD_COMMAND, bool is_64_bit);

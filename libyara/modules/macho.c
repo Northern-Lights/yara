@@ -9,16 +9,16 @@
 
 //This is our scanned data. For the header, we (should) be interested only in the 1st block.
 //In the future, we may be interested in more if we want to get Obj-C class info, for example.
-uint8_t		*block = 0;
-YR_OBJECT	*module_object = 0;		//TODO: Find a better name for this
+static uint8_t		*block = 0;
+static YR_OBJECT	*module_object = 0;		//TODO: Find a better name for this
 
 //Global pointers for headers.  Some may not exist.
-PFAT_HEADER fat_header = 0;
-PMACH_HEADER mach_header = 0;
-PMACH_HEADER_64 mach_header_64 = 0;
+static PFAT_HEADER fat_header = 0;
+static PMACH_HEADER mach_header = 0;
+static PMACH_HEADER_64 mach_header_64 = 0;
 
 //TODO: Maybe this should just take a YR_OBJECT so that we don't use it in wrong places.
-bool set_constants() {
+static bool set_constants() {
 	if (!module_object) { return false; }
 	set_integer(FAT_MAGIC, module_object, "FAT_MAGIC");
 	set_integer(FAT_CIGAM, module_object, "FAT_CIGAM");
@@ -174,7 +174,7 @@ bool set_constants() {
 
 //Offset for fat_header for a file should always be 0.
 //May be different if/when we start doing live memory scans.
-bool get_fat_header(uint64_t offset) {
+static bool get_fat_header(uint64_t offset) {
 	uint32_t magic = *((uint32_t *) (block + offset));
 	if (magic != FAT_MAGIC && magic != FAT_CIGAM) {
 		return false;
@@ -240,7 +240,7 @@ bool get_fat_header(uint64_t offset) {
 	return true;
 }
 
-bool get_mach_header(uint64_t offset) {
+static bool get_mach_header(uint64_t offset) {
 
 	mach_header = (PMACH_HEADER) (block + offset);
 	char *mh_name;
@@ -317,11 +317,7 @@ bool get_mach_header(uint64_t offset) {
 	return true;
 }
 
-bool get_mach_header_64(uint64_t offset) {
-	return false;
-}
-
-bool fill_segment_dict(PLOAD_COMMAND p) {
+static bool fill_segment_dict(PLOAD_COMMAND p) {
 	PSEGMENT seg = (PSEGMENT) p;
 	char *mh_name;
 
@@ -483,7 +479,7 @@ bool fill_segment_dict(PLOAD_COMMAND p) {
 	return true;
 }
 
-bool fill_load_dylib_dict(PLOAD_COMMAND p, bool is_64_bit) {
+static bool fill_load_dylib_dict(PLOAD_COMMAND p, bool is_64_bit) {
 
 	char *mh_name;
 	if (is_64_bit)
@@ -856,9 +852,9 @@ int module_load(
 		return ERROR_SUCCESS;
 	}
 
-	//Then these assume one or the other; if we can't get 32, try 64.
+	//If not fat, then start with mach.
 	if (!get_mach_header(0)) {
-		get_mach_header_64(0);
+		return !ERROR_SUCCESS;
 	}
 
 	//TODO: Any difference for PPC?
