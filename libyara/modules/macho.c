@@ -1,5 +1,6 @@
-#include <yara/modules.h>
 #include <yara/macho.h>
+#include <yara/modules.h>
+#include <yara/utils.h>
 
 #include <inttypes.h>
 #include <stdio.h>
@@ -19,7 +20,7 @@ static PMACH_HEADER_64 mach_header_64 = 0;
 
 //TODO: Maybe this should just take a YR_OBJECT so that we don't use it in wrong places.
 static bool set_constants() {
-	if (!module_object) { return false; }
+	if (!module_object) { return FALSE; }
 	set_integer(FAT_MAGIC, module_object, "FAT_MAGIC");
 	set_integer(FAT_CIGAM, module_object, "FAT_CIGAM");
 	set_integer(MH_MAGIC, module_object, "MH_MAGIC");
@@ -169,7 +170,7 @@ static bool set_constants() {
 	set_string(SEG_LINKEDIT, module_object, "SEG_LINKEDIT");
 	set_string(SEG_UNIXSTACK, module_object, "SEG_UNIXSTACK");
 	set_string(SEG_IMPORT, module_object, "SEG_IMPORT");
-	return true;
+	return TRUE;
 }
 
 //Offset for fat_header for a file should always be 0.
@@ -177,10 +178,10 @@ static bool set_constants() {
 static bool get_fat_header(uint64_t offset) {
 	uint32_t magic = *((uint32_t *) (block + offset));
 	if (magic != FAT_MAGIC && magic != FAT_CIGAM) {
-		return false;
+		return FALSE;
 	}
 
-	set_integer(true, module_object, "is_fat");
+	set_integer(TRUE, module_object, "is_fat");
 
 	fat_header = (PFAT_HEADER) block;
 	if (magic == FAT_CIGAM) {
@@ -230,14 +231,14 @@ static bool get_fat_header(uint64_t offset) {
 		{
 			result = get_mach_header(offset);
 
-			//If we get a malformed mach header, return false.
-			if (result == false) {
+			//If we get a malformed mach header, return FALSE.
+			if (result == FALSE) {
 				return result;
 			}
 		}
 	}
 
-	return true;
+	return TRUE;
 }
 
 static bool get_mach_header(uint64_t offset) {
@@ -249,18 +250,18 @@ static bool get_mach_header(uint64_t offset) {
 
 	switch (mach_header->magic) {
 	case MH_MAGIC:
-		set_integer(true, module_object, "is_macho");
+		set_integer(TRUE, module_object, "is_macho");
 		mh_name = "mh";
-		is_64_bit = false;
+		is_64_bit = FALSE;
 		break;
 	case MH_MAGIC_64:
-		set_integer(true, module_object, "is_macho_64");
+		set_integer(TRUE, module_object, "is_macho_64");
 		mh_name = "mh64";
-		is_64_bit = true;
+		is_64_bit = TRUE;
 		mach_header_64 = (PMACH_HEADER_64) mach_header;
 		break;
 	default:
-		return false;
+		return FALSE;
 	}
 
 	//Use the same mach_header for both 32- and 64-bit since the sizes are the
@@ -314,7 +315,7 @@ static bool get_mach_header(uint64_t offset) {
 		pLoad_command = (PLOAD_COMMAND) pNext_load_command;
 	}
 
-	return true;
+	return TRUE;
 }
 
 static bool fill_segment_dict(PLOAD_COMMAND p) {
@@ -329,7 +330,7 @@ static bool fill_segment_dict(PLOAD_COMMAND p) {
 		mh_name = "mh";
 		break;
 	default:
-		return false;
+		return FALSE;
 	}
 
 	//Because the field is char[16], and some names are 16 chars w/o '\0'
@@ -476,7 +477,7 @@ static bool fill_segment_dict(PLOAD_COMMAND p) {
 		}
 	}
 
-	return true;
+	return TRUE;
 }
 
 static bool fill_load_dylib_dict(PLOAD_COMMAND p, bool is_64_bit) {
@@ -522,7 +523,7 @@ static bool fill_load_dylib_dict(PLOAD_COMMAND p, bool is_64_bit) {
 		mh_name, basename);
 	set_integer(dylib->compatibility_version, module_object, identifier);
 
-	return true;
+	return TRUE;
 }
 
 begin_declarations;

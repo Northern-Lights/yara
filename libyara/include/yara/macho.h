@@ -4,7 +4,7 @@
  * Helper functions/items for the module
  */
 
-typedef enum bool {false, true} bool;
+typedef uint8_t bool;
 
 //Change from little- to big-endian and vice-versa
 uint32_t swap_endianness_32(uint32_t n) {
